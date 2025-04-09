@@ -4,14 +4,17 @@
 #include <QMainWindow>
 #include <QSerialPort>
 #include <QDebug>
-
+#include "sramwindow.h"
 
 #pragma pack(push, 1)
-struct Heartbeat {
+struct AIBData {
     uint16_t preamble;
-    uint8_t id;
     float temperature;
     char msg[64];
+
+    // sram stuff
+    uint32_t sram_address;
+    uint8_t sram_data;
 };
 #pragma pack(pop)
 
@@ -34,7 +37,12 @@ private:
     Ui::MainWindow *ui;
     QSerialPort serial;
     QByteArray buffer;
-    Heartbeat aibData;
+
+    AIBData aibData;
+    std::unordered_map<uint32_t, uint8_t> sramMemory;
+    sramwindow *sramWin = nullptr;
+
+
 
 private slots:
     void readSerialData();

@@ -10,20 +10,33 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     // setup uart
-    serial.setPortName("/dev/ttyACM0");
+    serial.setPortName("COM5");
     serial.setBaudRate(QSerialPort::Baud115200);     // Adjust if needed
     serial.setDataBits(QSerialPort::Data8);
     serial.setParity(QSerialPort::NoParity);
     serial.setStopBits(QSerialPort::OneStop);
     serial.setFlowControl(QSerialPort::NoFlowControl);
-
-    
     if (serial.open(QIODevice::ReadOnly)) {
         qDebug() << "Sucess";
         connect(&serial, &QSerialPort::readyRead, this, &MainWindow::readSerialData);
     } else {
         qDebug() << "Couldn't open serial";
     }
+
+    // show sram memory window
+    connect(ui->sramMemoryButton, &QPushButton::clicked, this, [=]() {
+        if (!sramWin) {
+            sramWin = new sramwindow(this);
+        }
+
+        // test sram data
+        sramMemory[0x01] = 0x34;
+        sramMemory[0x02] = 0x67;
+
+        sramWin->populateTable(sramMemory);
+        sramWin->show();
+    });
+
 }
 
 MainWindow::~MainWindow()
@@ -47,23 +60,25 @@ void MainWindow::readSerialData() {
         }
     }
 
-    if (index == -1) {
-        qDebug() << "preamble not found";
-    } else if (buffer.size() - index >= sizeof(Heartbeat)) {
-        QByteArray packet = buffer.mid(index, sizeof(Heartbeat)); // basically substring
-        /// set aibData based on this packet
-        memcpy(&aibData, packet.constData(), sizeof(Heartbeat));
+    if (index == -1 || buffer.size() - index < sizeof(AIBData))
+        return;
 
-        QString msg = aibData.msg;
+    QByteArray packet = buffer.mid(index, sizeof(AIBData)); // basically substring
+    /// set aibData based on this packet
+    memcpy(&aibData, packet.constData(), sizeof(AIBData));
 
-        qDebug() << "Got message | temp: " << aibData.temperature << ", msg: " << aibData.msg;
+    QString msg = aibData.msg;
 
-        // buffer.remove(0, index + sizeof(Heartbeat));
-        buffer.clear();
+    // qDebug() << "Got message | temp: " << aibData.temperature << ", msg: " << aibData.msg;
+    qDebug().noquote() << QString::asprintf("Address: 0x%08X | Data: 0x%02X", aibData.sram_address, aibData.sram_data);
 
-        ui->progressBar->setValue(aibData.temperature);
-        ui->uartRaw->append("Incoming Message: " + msg);
-    }
+    buffer.remove(0, index + sizeof(AIBData));
+    // buffer.clear();
 
+    ui->progressBar->setValue(aibData.temperature);
+    ui->uartRaw->append("Incoming Message: " + msg);
+
+    // add sram memory to our local map
+    sramMemory[aibData.sram_address] = aibData.sram_data;
 
 }
