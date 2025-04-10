@@ -10,17 +10,20 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     // setup uart
-    serial.setPortName("COM5");
-    serial.setBaudRate(QSerialPort::Baud115200);     // Adjust if needed
+    serial.setPortName("COM6");
+    serial.setBaudRate(QSerialPort::Baud115200);
     serial.setDataBits(QSerialPort::Data8);
     serial.setParity(QSerialPort::NoParity);
     serial.setStopBits(QSerialPort::OneStop);
     serial.setFlowControl(QSerialPort::NoFlowControl);
     if (serial.open(QIODevice::ReadOnly)) {
         qDebug() << "Sucess";
+        ui->connectionStatusLabel->setText(QString("Connection Status: <b><span style='color: green;'>OK</span></b>"));
         connect(&serial, &QSerialPort::readyRead, this, &MainWindow::readSerialData);
     } else {
         qDebug() << "Couldn't open serial";
+        ui->connectionStatusLabel->setText(QString("Connection Status: <b><span style='color: red;'>Bad</span></b> <i>(UART device not found)</i>"));
+
     }
 
     // show sram memory window
@@ -30,8 +33,8 @@ MainWindow::MainWindow(QWidget *parent)
         }
 
         // test sram data
-        sramMemory[0x01] = 0x34;
-        sramMemory[0x02] = 0x67;
+        // sramMemory[0x01] = 0x34;
+        // sramMemory[0x02] = 0x67;
 
         sramWin->populateTable(sramMemory);
         sramWin->show();
